@@ -5,8 +5,8 @@ from pathlib import Path
 
 experiment = 'clickbait-visual'
 
-model_path = f"S:/sfn-poster/sleap-nn/clickbait-motivate-sparse-v2/models/n=1057"
-bonsai_video_paths = get_file_paths(f'S:/sfn-poster/sleap-nn/7004', 'avi', '', print_paths=True, print_n=5)
+model_path = f"D:/sleap-nn/clickbait-motivate-sparse-v2/models/n=1057"
+bonsai_video_paths = get_file_paths(f'D:/{experiment}', 'avi', '', print_paths=True, print_n=5)
 
 def run_sleap():
     sleap_command = 'sleap-nn track'
