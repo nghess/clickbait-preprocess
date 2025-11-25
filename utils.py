@@ -154,10 +154,25 @@ def get_file_paths(directory: str, extension: str, keyword: str, print_paths=Fal
         show_paths(paths)
     return paths
 
+# Filter paths by checking if session id is greater than a given id
+def filter_paths_by_session_id(data_paths, session_id_threshold: int, part=-2, greater=True):
+    filtered_paths = []
+    for path in data_paths:
+        session_id = path.parts[part] # Extract session_id
+        numeric_value = int(re.search(r'\d+', session_id).group()) # Extract numeric part of session_id
+        if greater:
+            if int(numeric_value) > session_id_threshold:
+                filtered_paths.append(path)
+        else:
+            if int(numeric_value) < session_id_threshold:
+                filtered_paths.append(path) 
+    return filtered_paths
+
 # Print collected paths and their indices
 def show_paths(data_paths):
     for ii, path in enumerate(data_paths):
         print(f"{ii} {path}")
+
 
 def clip_outliers_with_window(data: np.ndarray, clip_mult: float = 2, window_size: int = 30000, overlap: int = 10000) -> np.ndarray:
     """
