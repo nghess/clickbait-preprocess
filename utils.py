@@ -139,6 +139,20 @@ def kilosort(data_path: str, results_path: str, probe_path: str = 'probe_maps/8_
 """
 Helper Functions Below
 """
+# Clears and resets dat_path in params.py file to local temp_wh.dat
+def reset_dat_path_in_params(file_path, new_dat_path='temp_wh.dat'):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Pattern to match dat_path assignment
+    pattern = r'(dat_path\s*=\s*)["\'].*?["\']'
+    updated_content = re.sub(pattern, f'\\1"{new_dat_path}"', content)
+        
+    # Write back to file
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(updated_content)
+    
+    return True
 
 # Get the name of the last two directories in data path
 def get_savedirs(path):
