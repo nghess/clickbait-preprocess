@@ -3,6 +3,7 @@ import re
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from datetime import datetime
 
 """
 Helper Functions Below
@@ -26,8 +27,17 @@ def natural_sort_key(path):
             for text in re.split('([0-9]+)', path_str)]
 
 # Get all files matching extension and keyword in a directory and its subdirectories
-def get_file_paths(directory: str = '', extension: str = '', keyword: str = '', session_type: str = '', print_paths=False, print_n=np.inf) -> list:
-    paths = [f for f in Path(directory).glob(f'**/{session_type}*/*.{extension}') if keyword in f.name]
+def get_file_paths(directory: str = '', extension: str = '', keyword: str = '', session_type: str = '', keyword_exact=False, keyword_bool=False, not_keyword='', print_paths=False, print_n=np.inf) -> list:
+    if keyword_bool:
+        if keyword_exact:
+            paths = [f for f in Path(directory).glob(f'**/{session_type}*/{keyword}.{extension}') if not_keyword not in str(f)]
+        else:   
+            paths = [f for f in Path(directory).glob(f'**/{session_type}*/*.{extension}') if keyword in f.name and not_keyword not in str(f)]
+    else:
+        if keyword_exact:
+            paths = [f for f in Path(directory).glob(f'**/{session_type}*/{keyword}.{extension}')]
+        else:   
+            paths = [f for f in Path(directory).glob(f'**/{session_type}*/*.{extension}') if keyword in f.name]
     # Sort paths using natural sorting
     paths = sorted(paths, key=natural_sort_key)
     print(f'Found {len(paths)} {keyword}.{extension} files')
@@ -185,30 +195,91 @@ def analyze_ttl_timing(signal, threshold=-25000):
         print(f"Spacing range: {np.min(spacings):.2f} to {np.max(spacings):.2f} samples")
 
 
-def convert_timestamps_to_ms(timestamps_df):
-    """
-    Convert a dataframe of datetime strings to milliseconds from start.
+# def convert_timestamps_to_ms(timestamps_df):
+#     """
+#     Convert a dataframe of datetime strings to milliseconds from start.
     
-    Args:
-        timestamps_df: DataFrame or Series containing datetime strings
+#     Args:
+#         timestamps_df: DataFrame or Series containing datetime strings
         
-    Returns:
-        Series containing millisecond timestamps relative to first entry
-    """
-    # Convert strings to datetime objects if they aren't already
-    if not pd.api.types.is_datetime64_any_dtype(timestamps_df):
-        timestamps = pd.to_datetime(timestamps_df)
-    else:
-        timestamps = timestamps_df
+#     Returns:
+#         Series containing millisecond timestamps relative to first entry
+#     """
+#     # Convert strings to datetime objects if they aren't already
+#     if not pd.api.types.is_datetime64_any_dtype(timestamps_df):
+#         timestamps = pd.to_datetime(timestamps_df)
+#     else:
+#         timestamps = timestamps_df
         
-    # Get the first timestamp
-    start_time = timestamps.iloc[0]
+#     # Get the first timestamp
+#     start_time = timestamps.iloc[0]
     
-    # Convert to milliseconds from start
-    timestamps_ms = (timestamps - start_time).dt.total_seconds() * 1000
+#     # Convert to milliseconds from start
+#     timestamps_ms = (timestamps - start_time).dt.total_seconds() * 1000
     
-    return timestamps_ms
+#     return timestamps_ms
 
+def open_ephys_start_time(timestamps_df):  # Need to merge utils and behavior_utils.
+    """
+    Get Open Ephys start time from sync_messages.txt file
+    Args:
+        sync_messages: text file containing datetime string
+    """
+    # Open text file and read first line
+    with open(timestamps_df, 'r') as f:
+        first_line = f.readline().strip()
+    # Extract timestamp using regex (string of digits >= 12 characters)
+    match = re.search(r'(\d{12,})', first_line)
+    if match:
+        timestamp_str = match.group(1)
+        return int(timestamp_str)
+    else:
+        raise ValueError("No valid timestamp found in sync_messages.txt")
+
+def timestamp_to_ms(timestamp_str):
+    """Convert timestamp string to milliseconds since Unix epoch (Jan 1, 1970 UTC).
+    
+    Parameters
+    ----------
+    timestamp_str : str
+        Timestamp in format 'YYYY-MM-DD HH:MM:SS.fffffffff'
+        
+    Returns
+    -------
+    int
+        Milliseconds since midnight Jan 1, 1970 UTC
+    """
+    # Truncate to microseconds (6 decimal places) if longer
+    if '.' in timestamp_str:
+        date_part, frac_part = timestamp_str.split('.')
+        frac_part = frac_part[:6]  # Keep only first 6 digits
+        timestamp_str = f"{date_part}.{frac_part}"
+    
+    dt = datetime.fromisoformat(timestamp_str)
+    return int(dt.timestamp() * 1000)
+
+def align_timestamps(event_data, open_ephys_start_ms):
+    """Align event timestamps to Open Ephys start time.
+    
+    Parameters
+    ----------
+    event_data : DataFrame
+        DataFrame containing 'timestamp' column with datetime strings
+    open_ephys_start_ms : int
+        Open Ephys start time in milliseconds since Unix epoch
+        
+    Returns
+    -------
+    DataFrame
+        Event data with aligned 'timestamp_ms' column in milliseconds since Open Ephys recording start
+    """
+    # Convert event timestamps to milliseconds since Unix epoch
+    event_data['timestamp_ms'] = event_data['timestamp'].apply(timestamp_to_ms)
+    
+    # Align to Open Ephys start time
+    event_data['timestamp_ms'] = event_data['timestamp_ms'] - open_ephys_start_ms
+    
+    return event_data
 
 # Clickbait event dataframe handling:
 def process_events(idx, event_paths_a, event_paths_b, columns: dict):
@@ -331,20 +402,5 @@ def calculate_drinking(data):
     
     return drinking
 
-def clean_sleap(sleap_data):
-    """Add in missing rows and impute missing nodes in SLEAP data"""
-    # Reindex to impute frames where SLEAP didn't find a a mouse instance
-    min_idx = sleap_data['frame_idx'].min()
-    max_idx = sleap_data['frame_idx'].max()
-    complete_range = range(min_idx, max_idx + 1)
 
-    # Set index column as the actual pandas index temporarily
-    df_reindexed = sleap_data.set_index('frame_idx').reindex(complete_range)
-    # Reset index to make it a regular column again
-    df_complete = df_reindexed.reset_index()
-    df_complete.rename(columns={'index': 'frame_idx'}, inplace=True)
-
-    # Impute missing values with linear interpolation
-    sleap_data = df_complete.interpolate()  
-    return sleap_data
 

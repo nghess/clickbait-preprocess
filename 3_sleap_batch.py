@@ -16,7 +16,7 @@ def run_sleap():
     # Run sleap inference on each video
     for video_path in bonsai_video_paths:
         output_dir = video_path.parent
-        cmd = f"conda run -n sleap-25 {sleap_command} --data_path {str(video_path)} --model_paths {model_path}"
+        cmd = f"conda run -n sleap-25 {sleap_command} --data_path {str(video_path)} --model_paths {model_path} --batch_size 8"
         print(f"Running: {cmd}")
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         print(result.stdout)
