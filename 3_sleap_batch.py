@@ -1,12 +1,13 @@
-from behavior_utils import *
+from utils import *
 import subprocess
 import os
 from pathlib import Path
 
-experiment = 'clickbait-visual'
+base_path = 'd:/data'
+experiment = 'clickbait-odor-alpha'
 
-model_path = f"D:/sleap-nn/clickbait-motivate-sparse-v2/models/n=1057"
-bonsai_video_paths = get_file_paths(f'D:/{experiment}', 'avi', '', print_paths=True, print_n=5)
+model_path = f"d:/code/clickbait-sleap/clickbait-motivate-sparse-v2/models/n=1057"
+bonsai_video_paths = get_file_paths(f'{base_path}/{experiment}', 'avi', '', print_paths=True, print_n=5)
 
 def run_sleap():
     sleap_command = 'sleap-nn track'
@@ -16,7 +17,7 @@ def run_sleap():
     # Run sleap inference on each video
     for video_path in bonsai_video_paths:
         output_dir = video_path.parent
-        cmd = f"conda run -n sleap-25 {sleap_command} --data_path {str(video_path)} --model_paths {model_path} --batch_size 8"
+        cmd = f"conda run -n sldata {sleap_command} --data_path {str(video_path)} --model_paths {model_path} --batch_size 8"
         print(f"Running: {cmd}")
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         print(result.stdout)
